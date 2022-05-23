@@ -3,6 +3,8 @@
 
 #include "FTPServer.h"
 
+/// llamada bind sirve para asignarle una dirección específica a un socket creado con la llamada socket 
+
 FTPServer *server;
 
 extern "C" void sighandler(int signal, siginfo_t *info, void *ptr) {

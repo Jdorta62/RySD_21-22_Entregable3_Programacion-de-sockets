@@ -32,36 +32,41 @@
 
 int define_socket_TCP(int port) {
    // Include the code for defining the socket.
-  
-  
-  return -1;
+  struct sockaddr_in sin;
+  int s;
+  s = socket(AF_INET, SOCK_STREAM, 0);
+  if ( s < 0) {
+    errexit("Error - FTPServer.cpp(39): No se pudo crear el socket %s\n", strerror(errno));
+  }
+  memset(&sin, 0, sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = INADDR_ANY;
+  sin.sin_port = htons(port);
+  if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {  /// asigna una dirección al socket s
+    errexit("Error - FTPServer.cpp(46): No puedo hacer el bind con el puerto: %s\n", strerror(errno));
+  }
+  if (listen(s,5) < 0) {   /// declara al socket s como pasivo. El número 5 indica la longitud máxima a la que puede crecer la cola de conexiones pendientes para s
+    errexit("Error - FTPServer.cpp(49): Fallo en el listen: %s\n", strerror(errno));
+  }
+  return s;
 }
-
-
-
-
 
 // This function is executed when the thread is executed.
 void* run_client_connection(void *c) {
   ClientConnection *connection = (ClientConnection *)c;
   connection->WaitForRequests();
-  
   return NULL;
 }
-
-
 
 FTPServer::FTPServer(int port) {
   this->port = port;
 }
-
 
 // Parada del servidor.
 void FTPServer::stop() {
   close(msock);
   shutdown(msock, SHUT_RDWR);
 }
-
 
 // Starting of the server
 void FTPServer::run() {
@@ -73,7 +78,7 @@ void FTPServer::run() {
     pthread_t thread;
     ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
     if(ssock < 0)
-    errexit("Fallo en el accept: %s\n", strerror(errno));
+      errexit("Fallo en el accept: %s\n", strerror(errno));
     
     ClientConnection *connection = new ClientConnection(ssock);
     

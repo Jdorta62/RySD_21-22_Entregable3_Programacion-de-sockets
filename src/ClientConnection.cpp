@@ -103,6 +103,8 @@ void ClientConnection::WaitForRequests() {
         parar = true;
       }
     } else if (COMMAND("PORT")) {
+      fscanf(fd, "%s", arg);
+      std::cout << arg << std::endl;
       // To be implemented by students
     } else if (COMMAND("PASV")) {
       // To be implemented by students
@@ -125,7 +127,7 @@ void ClientConnection::WaitForRequests() {
     } else {
       fprintf(fd, "502 Command not implemented.\n"); fflush(fd);
       printf("Comando : %s %s\n", command, arg);
-      printf("Error interno del servidor\n");
+      printf("Error - ClientConnection.cpp (128): Error interno del servidor\n");
     }
   }
   fclose(fd);
