@@ -7,12 +7,12 @@
 #include "ClientConnection.h"
 
 class FTPServer {
-public:
+ public:
   FTPServer(int port = 21);
   void run();
   void stop();
 
-private:
+ private:
   int port;
   int msock;
   std::list<ClientConnection*> connection_list;
