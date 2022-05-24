@@ -64,7 +64,7 @@ int connect_TCP( uint32_t address,  uint16_t  port) {
   struct sockaddr_in sin;
   int s;
   s = socket(AF_INET, SOCK_STREAM, 0);
-  if ( s < 0) {
+  if (s < 0) {
     errexit("Error - ClientConnection.cpp(68): No se pudo crear el socket %s\n", strerror(errno));
   }
   memset(&sin, 0, sizeof(sin));
@@ -104,10 +104,10 @@ void ClientConnection::WaitForRequests() {
       fscanf(fd, "%s", arg);
       fprintf(fd, "331 User name ok, need password\n");
     } else if (COMMAND("PWD")) {
-      printf("(PWD):SHOW\n");
-      char path[MAX_BUFF]; 
-      if (getcwd(path, sizeof(path)) != NULL)
-        fprintf(fd, "257 \"%s\" \n", path);
+      // printf("(PWD):SHOW\n");
+      // char path[MAX_BUFF]; 
+      // if (getcwd(path, sizeof(path)) != NULL)
+      //   fprintf(fd, "257 \"%s\" \n", path);
     } else if (COMMAND("PASS")) {
       fscanf(fd, "%s", arg);
       if(strcmp(arg,"1234") == 0) {
@@ -126,24 +126,26 @@ void ClientConnection::WaitForRequests() {
       
       // To be implemented by students
     } else if (COMMAND("PASV")) {
-        sockaddr_in socket;
-        socklen_t lenght;
-        int s = define_socket_TCP(0);
-        getsockname(s, (sockaddr*)&socket, &lenght);
-        int port = socket.sin_port;
-        int p1, p2;
-        p1 = port >> 8;
-        p2 = port & 0xFF;
-        fprintf(fd, "227 Entering passive mode (127,0,0,1,%d,%d)", p1, p2);
-        data_socket = accept(s, (sockaddr*)&socket, &lenght);
-        fprintf(fd, "200  OK\n");
+        // sockaddr_in socket;
+        // socklen_t lenght;
+        // int s = define_socket_TCP(0);
+        // getsockname(s, (sockaddr*)&socket, &lenght);
+        // int port = socket.sin_port;
+        // int p1, p2;
+        // p1 = port >> 8;
+        // p2 = port & 0xFF;
+        // fprintf(fd, "227 Entering passive mode (127,0,0,1,%d,%d)", p1, p2);
+        // data_socket = accept(s, (sockaddr*)&socket, &lenght);
+        // fprintf(fd, "200  OK\n");
       // To be implemented by students
     } else if (COMMAND("STOR") ) {
         char buffer[1024];
         int maxbuffer = 32;
         fscanf(fd, "%s", arg);  
-        FILE* file = fopen(arg, "w+");
+        FILE* file = fopen(arg, "wb");
         if (file != NULL) {
+          //fprintf(fd, "150 File status okay; about to open data connection.\n");
+          //fflush(fd);
           fprintf(fd, "Escribiendo a fichero...\n");
           while (1) {
             int bytes_recibidos = recv(data_socket, buffer, maxbuffer, 0);
@@ -156,6 +158,8 @@ void ClientConnection::WaitForRequests() {
           fclose(file);
           close(data_socket);
         } else {
+          //fprintf(fd, "450 Requested file action not taken. File unavaible.\n");
+          //close(data_socket);
           fprintf(fd, "No se puede abrir el fichero.\n");
         }
         fprintf(fd, "200  OK\n");
