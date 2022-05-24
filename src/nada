@@ -1,0 +1,41 @@
+printf("(LIST):SHOW\n");
+      fprintf(fd, "125 Data connection already open; transfer starting\n");
+      struct sockaddr_in sa;
+      socklen_t sa_len = sizeof(sa);
+      char buffer[MAX_BUFF];
+      std::string mostrar;
+      std::string ls = "ls -l";
+      ls.append(" 2>&1");
+      FILE* file = popen(ls.c_str(), "r");
+      if (!file) {
+        fprintf(fd, "450 Requested file action not taken. File unavaible.\n");
+        close(data_socket);
+      } else {
+        /*if (passive) {
+          data_socket = accept(data_socket,(struct sockaddr *)&sa, &sa_len);
+        }*/
+        while (!feof(file)) {
+          if (fgets(buffer, MAX_BUFF, file) != NULL) {
+            mostrar.append(buffer);
+          }
+        }
+        send(data_socket, mostrar.c_str(), mostrar.size(), 0);
+        fprintf(fd, "250 Closing data connection. Requested file action successful.\n");
+        pclose(file);
+        close(data_socket);
+      }
+    	
+
+
+
+      DIR *dir;
+      struct dirent *ent;
+      if((dir = opendir("./")) != NULL) {
+       while ((ent = readdir(dir)) != NULL) {
+         printf("%s\n", ent -> d_name);    
+       }
+       closedir(dir);
+      } else {
+        perror("Está vacío");
+      }
+      fprintf(fd, "200  OK\n");

@@ -35,6 +35,8 @@
 
 #include "ClientConnection.h"
 
+int define_socket_TCP(int port);
+
 ClientConnection::ClientConnection(int s) {
   int sock = (int)(s);
   char buffer[MAX_BUFF];
@@ -53,16 +55,27 @@ ClientConnection::ClientConnection(int s) {
   parar = false;
 };
 
-
 ClientConnection::~ClientConnection() {
   fclose(fd);
   close(control_socket); 
 }
 
-
 int connect_TCP( uint32_t address,  uint16_t  port) {
-  /// Implement your code to define a socket here
-  return -1; // You must return the socket descriptor.
+  struct sockaddr_in sin;
+  int s;
+  s = socket(AF_INET, SOCK_STREAM, 0);
+  if ( s < 0) {
+    errexit("Error - ClientConnection.cpp(68): No se pudo crear el socket %s\n", strerror(errno));
+  }
+  memset(&sin, 0, sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = address;
+  sin.sin_port = htons(port);
+  if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {  /// asigna una dirección al socket s
+    errexit("Error - ClientConnection.cpp(76): No puedo hacer el conect con el puerto: %s\n", strerror(errno));
+  }
+
+  return s;
 }
 
 void ClientConnection::stop() {
@@ -90,11 +103,12 @@ void ClientConnection::WaitForRequests() {
     if (COMMAND("USER")) {
       fscanf(fd, "%s", arg);
       fprintf(fd, "331 User name ok, need password\n");
-    }
-    else if (COMMAND("PWD")) {
-  
-    }
-    else if (COMMAND("PASS")) {
+    } else if (COMMAND("PWD")) {
+      printf("(PWD):SHOW\n");
+      char path[MAX_BUFF]; 
+      if (getcwd(path, sizeof(path)) != NULL)
+        fprintf(fd, "257 \"%s\" \n", path);
+    } else if (COMMAND("PASS")) {
       fscanf(fd, "%s", arg);
       if(strcmp(arg,"1234") == 0) {
         fprintf(fd, "230 User logged in\n");
@@ -103,17 +117,85 @@ void ClientConnection::WaitForRequests() {
         parar = true;
       }
     } else if (COMMAND("PORT")) {
-      fscanf(fd, "%s", arg);
-      std::cout << arg << std::endl;
+      int h0, h1, h2, h3, a1, a2;
+      fscanf(fd, "%d, %d, %d, %d, %d, %d", &h0, &h1, &h2, &h3, &a1, &a2);
+      int32_t ip_address = h3 << 24 | h2 << 16 | h1 << 8 | h0;
+      int16_t port_number = a1 << 8 | a2;
+      data_socket = connect_TCP(ip_address, port_number);
+      fprintf(fd, "200 OK\n");
+      
       // To be implemented by students
     } else if (COMMAND("PASV")) {
+        sockaddr_in socket;
+        socklen_t lenght;
+        int s = define_socket_TCP(0);
+        getsockname(s, (sockaddr*)&socket, &lenght);
+        int port = socket.sin_port;
+        int p1, p2;
+        p1 = port >> 8;
+        p2 = port & 0xFF;
+        fprintf(fd, "227 Entering passive mode (127,0,0,1,%d,%d)", p1, p2);
+        data_socket = accept(s, (sockaddr*)&socket, &lenght);
+        fprintf(fd, "200  OK\n");
       // To be implemented by students
     } else if (COMMAND("STOR") ) {
+        char buffer[1024];
+        int maxbuffer = 32;
+        fscanf(fd, "%s", arg);  
+        FILE* file = fopen(arg, "w+");
+        if (file != NULL) {
+          fprintf(fd, "Escribiendo a fichero...\n");
+          while (1) {
+            int bytes_recibidos = recv(data_socket, buffer, maxbuffer, 0);
+            int r = fwrite(buffer, 1, maxbuffer, file);
+            if (bytes_recibidos == 0) {
+              break;
+            }
+          }
+          fprintf(fd, "Se ha sobreescrito el fichero.");
+          fclose(file);
+          close(data_socket);
+        } else {
+          fprintf(fd, "No se puede abrir el fichero.\n");
+        }
+        fprintf(fd, "200  OK\n");
       // To be implemented by students
     } else if (COMMAND("RETR")) {
+        char buffer[1024];
+        int maxbuffer = 32;
+        //fscanf(fd, "%s", arg);
+        fscanf(fd, "%s", arg);
+        printf("(RETR):%s\n", arg);
+        FILE* file = fopen(arg, "rb");
+        if (file != NULL) {
+          fprintf(fd, "Recibiendo fichero...\n");
+          while (1) {
+            int r = fread(buffer, 1, maxbuffer, file);
+            if (r == 0) {
+              break;
+            }
+            send (data_socket, buffer, r, 0);
+          }
+          fprintf(fd, "Se ha recibido el fichero.");
+          fclose(file);
+          close(data_socket);
+        } else {
+          fprintf(fd, "No se puede abrir el fichero.\n");
+        }
+        fprintf(fd, "200  OK\n");
       // To be implemented by students
     } else if (COMMAND("LIST")) {
-      // To be implemented by students	
+      DIR *dir;
+      struct dirent *ent;
+      if((dir = opendir("./")) != NULL) {
+       while ((ent = readdir(dir)) != NULL) {
+         printf("%s\n", ent -> d_name);    
+       }
+       closedir(dir);
+      } else {
+        perror("Está vacío");
+      }
+      fprintf(fd, "200  OK\n");
     } else if (COMMAND("SYST")) {
       fprintf(fd, "215 UNIX Type: L8.\n");   
     } else if (COMMAND("TYPE")) {
