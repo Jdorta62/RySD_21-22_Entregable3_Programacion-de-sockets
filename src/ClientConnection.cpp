@@ -32,7 +32,6 @@
 #include <dirent.h>
 
 #include "common.h"
-
 #include "ClientConnection.h"
 
 int define_socket_TCP(int port);
@@ -126,31 +125,31 @@ void ClientConnection::WaitForRequests() {
       
       // To be implemented by students
     } else if (COMMAND("PASV")) {
-        // sockaddr_in socket;
-        // socklen_t lenght;
-        // int s = define_socket_TCP(0);
-        // getsockname(s, (sockaddr*)&socket, &lenght);
-        // int port = socket.sin_port;
-        // int p1, p2;
-        // p1 = port >> 8;
-        // p2 = port & 0xFF;
-        // fprintf(fd, "227 Entering passive mode (127,0,0,1,%d,%d)", p1, p2);
-        // data_socket = accept(s, (sockaddr*)&socket, &lenght);
-        // fprintf(fd, "200  OK\n");
+        sockaddr_in socket;     /// Socket para poder escuchar en un puerto distinto que el por defecto
+        socklen_t lenght;
+        int s = define_socket_TCP(0);   /// Creamos un socket nuevo y dejamos el SO le asigne un puerto
+        getsockname(s, (sockaddr*)&socket, &lenght);
+        int port = socket.sin_port;  /// obtenemos puerto en el que se va escuchar por peticiones.
+        int p1, p2;
+        p1 = port >> 8;  /// dividimos el numero binario del puerto obtenido en 2 numero decimales de 8bits
+        p2 = port & 0xFF;
+        fprintf(fd, "227 Entering passive mode (127,0,0,1,%d,%d)", p1, p2);  /// Mostramos la dirección IP y el puerto por el que está escuchando
+        data_socket = accept(s, (sockaddr*)&socket, &lenght);  /// inicializamos el atributo privado de la clase ClientConnection
+        fprintf(fd, "200  OK\n");  /// Mostramos mensaje de que todo ha ido bien
       // To be implemented by students
     } else if (COMMAND("STOR") ) {
-        char buffer[1024];
-        int maxbuffer = 32;
+        char buffer[1024]; /// Tamaño del buffer 1024 bytes
+        int maxbuffer = 64;  /// Nmero de bytes máximo a extraer por cada llamada a la funcion recv
         fscanf(fd, "%s", arg);  
         FILE* file = fopen(arg, "wb");
         if (file != NULL) {
-          //fprintf(fd, "150 File status okay; about to open data connection.\n");
-          //fflush(fd);
+          fprintf(fd, "150 File status okay; about to open data connection.\n");
+          fflush(fd);
           fprintf(fd, "Escribiendo a fichero...\n");
           while (1) {
-            int bytes_recibidos = recv(data_socket, buffer, maxbuffer, 0);
+            int recived_bytes = recv(data_socket, buffer, maxbuffer, 0);
             int r = fwrite(buffer, 1, maxbuffer, file);
-            if (bytes_recibidos == 0) {
+            if (recived_bytes == 0) {
               break;
             }
           }
@@ -158,16 +157,15 @@ void ClientConnection::WaitForRequests() {
           fclose(file);
           close(data_socket);
         } else {
-          //fprintf(fd, "450 Requested file action not taken. File unavaible.\n");
-          //close(data_socket);
+          fprintf(fd, "450 Requested file action not taken. File unavaible.\n");
+          close(data_socket);
           fprintf(fd, "No se puede abrir el fichero.\n");
         }
         fprintf(fd, "200  OK\n");
       // To be implemented by students
     } else if (COMMAND("RETR")) {
         char buffer[1024];
-        int maxbuffer = 32;
-        //fscanf(fd, "%s", arg);
+        int maxbuffer = 64;
         fscanf(fd, "%s", arg);
         printf("(RETR):%s\n", arg);
         FILE* file = fopen(arg, "rb");
